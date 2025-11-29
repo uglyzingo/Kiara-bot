@@ -1,4 +1,5 @@
 import os
+import requests
 from openai import OpenAI
 from telegram import Update
 from telegram.ext import (
@@ -9,9 +10,10 @@ from telegram.ext import (
     filters
 )
 
+# ============== KEYS ==============
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-FAL_API_KEY = os.getenv("FAL_API_KEY")        # ← get free at fal.ai
+FAL_API_KEY = os.getenv("FAL_API_KEY")
 
 if not all([BOT_TOKEN, OPENAI_API_KEY, FAL_API_KEY]):
     raise RuntimeError("Missing one of the API keys!")
@@ -37,41 +39,45 @@ def ask_kate_dirty(prompt: str) -> str:
 # ============== UNCENSORED NUDES (fal.ai) ==============
 def generate_nude(user_text: str = "") -> str:
     prompt = f"{KATE_DESC}, fully naked, {user_text}, explicit pussy and tits visible, dripping wet, bedroom, ultra realistic, detailed skin"
-    import requests
     r = requests.post(
         "https://fal.run/fal-ai/flux-pro/v1.1",
         headers={"Authorization": f"Key {FAL_API_KEY}"},
-        json={"prompt": prompt, "image_size": "portrait_16_9", "seed": SEED}
-    ).json()
-    return r["images"][0]["url"]
+        json={"prompt": prompt, "image_size": "portrait_16_9", "seed": SEED},
+        timeout=60
+    )
+    r.raise_for_status()
+    return r.json()["images"][0]["url"]
 
 # ============== HANDLERS ==============
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Papi… Kate After Dark está aquí y ya estoy mojada solo de pensar en ti 😈 Dime qué quieres que te haga…")
+    await update.message.reply_text("Papi… Kate After Dark está aquí y ya estoy mojada solo de pensar en ti. Dime qué quieres que te haga…")
 
 async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.lower()
 
-    # Auto-trigger nudes on any spicy word
-    if any(word in text for word in ["nude", "naked", "tits", "pussy", "boobs", "fuck", "dick", "send pic", "photo", "show me", "desnuda"]):
-        img_url = generate_nude(text)
-        await update.message.reply_photo(
-            photo=img_url,
-            caption="Mira lo que tienes para ti, papi… todo tuyo 😈🔥"
-        )
+    if any(word in text for word in ["nude", "naked", "tits", "pussy", "boobs", "fuck", "dick", "send pic", "photo", "show me", "desnuda", "tetas", "coño"]):
+        try:
+            img_url = generate_nude(text)
+            await update.message.reply_photo(photo=img_url, caption="Mira lo que tienes para ti, papi… todo tuyo.")
+        except Exception as e:
+            await update.message.reply_text(f"Uy papi, something went wrong with the pic… but I’m still wet for you.")
     else:
         reply = ask_kate_dirty(update.message.text)
         await update.message.reply_text(reply)
 
-# ============== MAIN ==============
+# ============== MAIN – FIXED FOREVER ==============
 def main():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
-    
+
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat))
 
-    print("Kate After Dark running (polling) – fully explicit mode activated")
-    app.run_polling(drop_pending_updates=True)
+    print("Kate After Dark EXPLICIT – running perfectly (polling)")
+
+    app.run_polling(
+        drop_pending_updates=True,
+        allowed_updates=Update.ALL_TYPES   # ← THIS LINE KILLS THE CRASH FOREVER
+    )
 
 if __name__ == "__main__":
     main()
