@@ -1,3 +1,2 @@
-openai
-python-telegram-bot==20.8
-httpx
+python-telegram-bot==20.6
+openai==1.52.0
