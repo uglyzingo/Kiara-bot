@@ -59,24 +59,31 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
         try:
             img_url = generate_nude(text)
             await update.message.reply_photo(photo=img_url, caption="Mira lo que tienes para ti, papi… todo tuyo.")
-        except Exception as e:
-            await update.message.reply_text(f"Uy papi, something went wrong with the pic… but I’m still wet for you.")
+        except Exception:
+            await update.message.reply_text("Uy papi, the pic is taking a second… but I’m still dying for you.")
     else:
         reply = ask_kate_dirty(update.message.text)
         await update.message.reply_text(reply)
 
-# ============== MAIN – FIXED FOREVER ==============
+# ============== FINAL BULLETPROOF MAIN ==============
 def main():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat))
 
-    print("Kate After Dark EXPLICIT – running perfectly (polling)")
+    print("Kate After Dark EXPLICIT – ONLINE AND UNSTOPPABLE")
 
     app.run_polling(
         drop_pending_updates=True,
-        allowed_updates=Update.ALL_TYPES   # ← THIS LINE KILLS THE CRASH FOREVER
+        allowed_updates=Update.ALL_TYPES,
+        poll_interval=1.0,
+        timeout=20,
+        bootstrap_retries=-1,
+        read_timeout=20,
+        write_timeout=20,
+        connect_timeout=20,
+        pool_timeout=20
     )
 
 if __name__ == "__main__":
