@@ -1,5 +1,5 @@
 import os
-import requests
+import httpx  # ← changed from requests to httpx (already in python-telegram-bot deps)
 from openai import OpenAI
 from telegram import Update
 from telegram.ext import (
@@ -36,17 +36,17 @@ def ask_kate_dirty(prompt: str) -> str:
     )
     return completion.choices[0].message.content
 
-# ============== UNCENSORED NUDES (fal.ai) ==============
+# ============== UNCENSORED NUDES (fal.ai) – now with httpx ==============
 def generate_nude(user_text: str = "") -> str:
     prompt = f"{KATE_DESC}, fully naked, {user_text}, explicit pussy and tits visible, dripping wet, bedroom, ultra realistic, detailed skin"
-    r = requests.post(
+    response = httpx.post(
         "https://fal.run/fal-ai/flux-pro/v1.1",
         headers={"Authorization": f"Key {FAL_API_KEY}"},
         json={"prompt": prompt, "image_size": "portrait_16_9", "seed": SEED},
-        timeout=60
+        timeout=60.0
     )
-    r.raise_for_status()
-    return r.json()["images"][0]["url"]
+    response.raise_for_status()
+    return response.json()["images"][0]["url"]
 
 # ============== HANDLERS ==============
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -55,20 +55,19 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.lower()
 
-    if any(word in text for word in ["nude", "naked", "tits", "pussy", "boobs", "fuck", "dick", "send pic", "photo", "show me", "desnuda", "tetas", "coño"]):
+    if any(word in text for word in ["nude","naked","tits","pussy","boobs","fuck","dick","send pic","photo","show me","desnuda","tetas","coño"]):
         try:
             img_url = generate_nude(text)
             await update.message.reply_photo(photo=img_url, caption="Mira lo que tienes para ti, papi… todo tuyo.")
         except Exception:
-            await update.message.reply_text("Uy papi, the pic is taking a second… but I’m still dying for you.")
+            await update.message.reply_text("Uy, the pic is taking a second… but I’m still dying for you.")
     else:
         reply = ask_kate_dirty(update.message.text)
         await update.message.reply_text(reply)
 
-# ============== FINAL BULLETPROOF MAIN ==============
+# ============== BULLETPROOF MAIN ==============
 def main():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
-
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat))
 
