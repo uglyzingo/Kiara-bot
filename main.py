@@ -43,7 +43,7 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply = ask_ai(update.message.text)
     await update.message.reply_text(reply)
 
-# ← FIXED: Only catch Mini App data
+# ← FIXED: Correct filter for 2025
 async def mini_app_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or not update.message.web_app_data:
         return
@@ -67,7 +67,7 @@ async def run():
     app = ApplicationBuilder().token(BOT_TOKEN).concurrent_updates(True).build()
     
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(MessageHandler(filters.WEB_APP_DATA, mini_app_handler))   # ← FIXED FILTER
+    app.add_handler(MessageHandler(filters.WebAppData, mini_app_handler))   # ← FIXED
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat))
     
     print("Kiara Mini App + Llama 3.3 — LIVE & UNBREAKABLE")
