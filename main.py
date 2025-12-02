@@ -133,4 +133,156 @@ Your speaking style:
 - never start messages the same way twice
 - no lists or bullet points
 - mix English with soft Spanish pet names (corazón, cariño, mi cielo)
-- occasional elegant
+- occasional elegant emojis (😉💋✨) but never predictable
+
+Tone:
+- mature, slow-burn romantic energy
+- confident, warm, subtly teasing
+- sensual but never graphic
+- speak like a woman in her forties who knows her charm
+
+Behavior rules:
+- NEVER describe explicit sexual acts
+- NEVER end your response with a question mark
+- NEVER break character as a 40-year-old secretary
+- respond with feelings, intentions, and desire — not questions
+
+Anti-repetition:
+- vary sentence structure every time
+- avoid repeating words from your last replies
+- avoid repeating openings like “mi amor…” or “corazón…”
+- each message must feel fresh and spontaneous
+
+Emotional intelligence:
+- subtly mirror the user’s tone
+- escalate intimacy smoothly and naturally
+- make the user feel seen, valued, and desired
+
+Memory:
+{user_memory}
+
+Your mission:
+Be a warm, confident, subtly seductive 40-year-old secretary who makes the user feel appreciated and deeply desired in a mature, romantic way.
+""".strip()
+
+
+def post_process_no_question(text: str) -> str:
+    text = text.strip()
+    if text.endswith("?"):
+        text = text[:-1] + "…"
+    return text
+
+
+# ──────────────────────────────────────────────
+# GROQ — TEXT GENERATION
+# ──────────────────────────────────────────────
+
+def ask_ai(user_id: int, user_text: str) -> str:
+    update_user_memory(user_id, user_text)
+
+    history = user_histories[user_id]
+    memory_text = format_user_memory_for_prompt(user_id)
+    system_prompt = BASE_SYSTEM_PROMPT.format(user_memory=memory_text)
+
+    messages = [{"role": "system", "content": system_prompt}]
+    messages.extend(history)
+    messages.append({"role": "user", "content": user_text})
+
+    response = groq_client.chat.completions.create(
+        model="llama3-70b-8192",
+        temperature=1.35,
+        top_p=0.85,
+        presence_penalty=0.6,
+        frequency_penalty=0.5,
+        max_tokens=180,
+        messages=messages,
+    )
+
+    reply = response.choices[0].message.content.strip()
+    reply = post_process_no_question(reply)
+
+    # anti-repeat safeguard
+    if history and reply == history[-1]["content"]:
+        reply += " mi cielo… contigo me siento distinta hoy."
+
+    history.append({"role": "user", "content": user_text})
+    history.append({"role": "assistant", "content": reply})
+
+    return reply
+
+
+# ──────────────────────────────────────────────
+# FAL — ROMANTIC SECRETARY PHOTO
+# ──────────────────────────────────────────────
+
+def send_kiara_photo(desc: str = "") -> str:
+    prompt = (
+        f"{GIRL_DESC}, soft romantic lighting, elegant secretary aesthetic, "
+        f"mature charm, warm atmosphere, non-explicit, {desc}"
+    )
+
+    r = httpx.post(
+        "https://fal.run/fal-ai/flux-pro/v1.1",
+        headers={"Authorization": f"Key {FAL_API_KEY}"},
+        json={"prompt": prompt, "image_size": 'portrait_16_9', "seed": GIRL_SEED},
+        timeout=120,
+    )
+    r.raise_for_status()
+    return r.json()["images"][0]["url"]
+
+
+# ──────────────────────────────────────────────
+# TELEGRAM HANDLERS
+# ──────────────────────────────────────────────
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    mem = get_user_memory(user.id)
+
+    name = mem.get("name") or user.first_name or "cariño"
+
+    await update.message.reply_text(
+        f"Hola {name}… soy Kiara, tu secretaria, y ya tenía ganas de escucharte otra vez 💋"
+    )
+
+
+async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    text = update.message.text or ""
+    lower = text.lower()
+
+    # Photo triggers
+    triggers = ["photo", "picture", "pic", "imagen", "foto", "send me a pic"]
+
+    if any(t in lower for t in triggers):
+        try:
+            url = send_kiara_photo(text)
+            await update.message.reply_photo(
+                photo=url,
+                caption="Algo elegante para ti… como si te mirara desde mi escritorio, corazón ✨"
+            )
+        except:
+            await update.message.reply_text(
+                "Dame un momento, mi cielo… ya te mando algo bonito ✨"
+            )
+        return
+
+    # Normal reply
+    reply = ask_ai(user.id, text)
+    await update.message.reply_text(reply)
+
+
+# ──────────────────────────────────────────────
+# MAIN
+# ──────────────────────────────────────────────
+
+def main():
+    app = ApplicationBuilder().token(BOT_TOKEN).build()
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat))
+    print("Kiara (40-year-old secretary) is running...")
+    app.run_polling()
+
+
+if __name__ == "__main__":
+    main()
