@@ -93,14 +93,17 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ==============================
 async def mini_app_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handles actions from the WebApp (Gallery, Flirt, Love, Upgrade, Gifts)."""
-    
-    data = update.message.web_app_data.data  # raw JSON string
-    if not data:
-        return
-    
-    import json
-    payload = json.loads(data)
 
+    # Ignore non-mini-app messages
+    if not update.message or not update.message.web_app_data:
+        return
+
+    raw = update.message.web_app_data.data
+    if not raw:
+        return
+
+    import json
+    payload = json.loads(raw)
     action = payload.get("action", "")
 
     responses = {
@@ -126,8 +129,8 @@ def main():
     # Commands
     app.add_handler(CommandHandler("start", start))
 
-    # Mini App data handler
-    app.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, mini_app_handler))
+    # Mini App data handler (FIXED FILTER)
+    app.add_handler(MessageHandler(filters.ALL, mini_app_handler))
 
     # Normal chat
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat))
