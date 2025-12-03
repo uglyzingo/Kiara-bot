@@ -1,4 +1,6 @@
-import os, asyncio, json
+import os, json, nest_asyncio   # ← nest_asyncio added
+nest_asyncio.apply()            # ← THIS LINE KILLS THE LOOP ERROR
+
 from groq import Groq
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 from telegram.ext import (
@@ -18,7 +20,7 @@ if not BOT_TOKEN or not GROQ_API_KEY:
 client = Groq(api_key=GROQ_API_KEY)
 MINI_APP_URL = "https://kiara-mini-app.vercel.app/"
 
-# DIRTY TALK
+# AI CHAT
 def ask_ai(prompt: str) -> str:
     try:
         completion = client.chat.completions.create(
@@ -34,7 +36,6 @@ def ask_ai(prompt: str) -> str:
     except:
         return "Ay cariño… se me fue la señal un segundo 💋"
 
-# /START
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [[InlineKeyboardButton("💗 Open Kiara", web_app=WebAppInfo(url=MINI_APP_URL))]]
     await update.message.reply_text(
@@ -42,12 +43,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
-# NORMAL CHAT
 async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply = ask_ai(update.message.text)
     await update.message.reply_text(reply)
 
-# MINI APP HANDLER — MUST BE LAST
 async def mini_app_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or not update.message.web_app_data:
         return
@@ -67,24 +66,22 @@ async def mini_app_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except:
         pass
 
-# MAIN — UNBREAKABLE
-async def run():
+def main():
     app = ApplicationBuilder().token(BOT_TOKEN).concurrent_updates(True).build()
     
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat))           # ← normal chat first
-    app.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, mini_app_handler))  # ← Mini App LAST
-
+    app.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, mini_app_handler))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat))
+    
     print("Kiara Mini App + Llama 3.3 — LIVE & UNBREAKABLE")
     
-    await app.run_polling(
+    app.run_polling(
         drop_pending_updates=True,
         allowed_updates=Update.ALL_TYPES,
         poll_interval=1.0,
         timeout=30,
-        bootstrap_retries=-1,
-        close_loop=False
+        bootstrap_retries=-1
     )
 
 if __name__ == "__main__":
-    asyncio.run(run())
+    main()
