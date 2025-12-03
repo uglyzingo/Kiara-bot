@@ -1,4 +1,5 @@
-import os, asyncio, json
+import os, json
+from asyncio import get_event_loop
 from groq import Groq
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 from telegram.ext import (
@@ -62,23 +63,26 @@ async def mini_app_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except:
         pass
 
-async def run():
+def main():
     app = ApplicationBuilder().token(BOT_TOKEN).concurrent_updates(True).build()
     
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, mini_app_handler))   # ← FIXED
+    app.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, mini_app_handler))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat))
     
     print("Kiara Mini App + Llama 3.3 — LIVE & UNBREAKABLE")
     
-    await app.run_polling(
-        drop_pending_updates=True,
-        allowed_updates=Update.ALL_TYPES,
-        poll_interval=1.0,
-        timeout=30,
-        bootstrap_retries=-1,
-        close_loop=False
+    # FIXED: Use the running loop instead of creating new one
+    loop = get_event_loop()
+    loop.run_until_complete(
+        app.run_polling(
+            drop_pending_updates=True,
+            allowed_updates=Update.ALL_TYPES,
+            poll_interval=1.0,
+            timeout=30,
+            bootstrap_retries=-1
+        )
     )
 
 if __name__ == "__main__":
-    asyncio.run(run())
+    main()
