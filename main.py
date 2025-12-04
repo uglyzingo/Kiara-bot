@@ -103,7 +103,8 @@ async def mini_app_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await msg.reply_text("⚠️ No pude leer los datos del mini app.")
         return
 
-    action = payload.get("action")
+    # 🔥 FIX: accept both {action: "..."} AND {type: "..."}
+    action = payload.get("action") or payload.get("type")
     print("🎯 ACTION:", action)
 
     responses = {
@@ -136,13 +137,13 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def main():
     app = ApplicationBuilder().token(BOT_TOKEN).concurrent_updates(True).build()
 
-    # 1) Mini App WebAppData handler (MUST be added)
+    # 1) Mini App WebAppData handler
     app.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, mini_app_handler))
 
     # 2) /start command
     app.add_handler(CommandHandler("start", start))
 
-    # 3) Normal chat (text messages)
+    # 3) Normal chat messages
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat))
 
     print("🚀 Kiara + Mini App + Groq Llama 3.3 — LIVE")
